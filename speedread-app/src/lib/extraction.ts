@@ -175,10 +175,11 @@ export async function extractFile(
   file: File,
   signal: AbortSignal,
   progress: (message: string) => void,
+  language = "eng",
 ): Promise<ExtractionResult> {
   const provider = providers.find((p) => p.accepts(file));
   if (provider) return provider.extract(file, signal, progress);
-  const session = new LocalOCR(signal, progress);
+  const session = new LocalOCR(signal, progress, language);
   try {
     return await extractLocalFile(file, signal, progress, session);
   } finally {
@@ -583,9 +584,14 @@ async function ocr(
   const result = await session.recognize(await blob.arrayBuffer(), page);
   abortIf(signal);
   const paragraphs = result.blocks?.flatMap((b) => b.paragraphs) ?? [];
+  // OCR inserts spaces between Han glyphs. Preserve its exact output in original,
+  // and let the Chinese word segmenter recover words from the reading copy.
+  const joinChinese = (text: string) =>
+    text.replace(/(?<=\p{Script=Han})[^\S\n]+(?=\p{Script=Han})/gu, "");
   if (!paragraphs.length)
     return textBlocks(result.text, file, sourceId).map((b) => ({
       ...b,
+      cleaned: joinChinese(b.cleaned),
       page,
       confidence: result.confidence / 100,
     }));
@@ -596,7 +602,7 @@ async function ocr(
     page,
     bbox: [p.bbox.x0, p.bbox.y0, p.bbox.x1 - p.bbox.x0, p.bbox.y1 - p.bbox.y0],
     original: p.text,
-    cleaned: p.text,
+    cleaned: joinChinese(p.text),
     type: "paragraph",
     order: i,
     confidence: p.confidence / 100,

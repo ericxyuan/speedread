@@ -34,7 +34,7 @@ export function processBlocks(
     worker.onmessage = (e) => {
       stop();
       if (e.data.error) reject(new Error(e.data.error));
-      else resolve(e.data);
+      else resolve({ blocks: e.data.blocks, tokens: e.data.tokens });
     };
     worker.postMessage({ id: crypto.randomUUID(), blocks, mode, locale });
   });

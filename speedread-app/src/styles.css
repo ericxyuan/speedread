@@ -4,7 +4,9 @@
   initial-value: #75d8e4;
 }
 :root {
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
   color: #eaecf0;
   background: #090b0f;
   font-synthesis: none;
@@ -2125,4 +2127,299 @@ kbd {
   padding-left: 15px;
   margin: 24px 0 0;
   white-space: pre-wrap;
+}
+
+/* Apple-guided refinement: a document task, one central working surface. */
+.home-main {
+  max-width: 900px;
+  grid-template-columns: 1fr;
+  padding-top: 50px;
+  gap: 0;
+}
+.intro {
+  text-align: center;
+  padding: 0 0 30px;
+}
+.intro h1 {
+  font-size: 46px;
+  letter-spacing: -1.5px;
+  margin: 0 0 16px;
+  line-height: 1.15;
+}
+.intro > p {
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 0;
+}
+.intro .trust {
+  justify-content: center;
+  margin-top: 18px;
+  font-size: 12px;
+}
+.import-card {
+  width: 100%;
+  max-width: 680px;
+  justify-self: center;
+  border-radius: 14px;
+  background: #12161c;
+  box-shadow: 0 8px 32px #0002;
+}
+.sample-link {
+  grid-column: 1;
+  font-size: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.sample-link > button {
+  font-size: 12px;
+}
+.home-lower {
+  margin-top: 36px;
+  gap: 30px;
+}
+.preview-card {
+  padding-left: 30px;
+}
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: 0;
+  font-weight: 500;
+  text-transform: none;
+}
+.preview-card > .eyebrow {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.preview-card > .subtle {
+  font-size: 11px;
+}
+.brand {
+  letter-spacing: -0.7px;
+}
+.brand-mark {
+  background: none;
+  border: 0;
+}
+.app-header nav > button {
+  min-height: 38px;
+  font-size: 12px;
+}
+.drop-zone {
+  border-radius: 10px;
+  min-height: 220px;
+}
+.drop-zone strong {
+  font-size: 16px;
+}
+.drop-zone > span {
+  font-size: 13px;
+}
+.drop-zone small,
+.import-bottom > span {
+  font-size: 11px;
+}
+.import-tabs > button {
+  font-size: 12px;
+  min-height: 38px;
+}
+.speed-heading > span {
+  font-size: 13px;
+}
+.presets > button {
+  font-size: 11px;
+  min-height: 44px;
+}
+.presets small {
+  font-size: 11px;
+}
+.compact .presets > button {
+  font-size: 10px;
+  min-height: 32px;
+}
+.switch-row,
+.option-card > p,
+.field-label,
+.option-card .subtle {
+  font-size: 12px;
+}
+.switch-row > span > small {
+  font-size: 11px;
+}
+.progress-meta {
+  font-size: 11px;
+}
+.reader-title > small,
+.reading-status {
+  font-size: 11px;
+}
+.reader-title > span {
+  font-size: 14px;
+}
+.app-footer {
+  font-size: 11px;
+}
+.app-footer > button {
+  font-size: 11px;
+}
+.settings-form > label > select {
+  width: auto;
+  max-width: 100%;
+}
+.pinyin-review input {
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.pinyin-review summary {
+  font-size: 12px;
+  color: #a7bdcf;
+}
+.pinyin-review .subtle {
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+.cjk-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 1.15em;
+  line-height: 1.3;
+  letter-spacing: 0;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+.cjk-cell .hanzi {
+  display: block;
+}
+.cjk-cell .pinyin {
+  position: absolute;
+  bottom: calc(100% + 0.15em);
+  left: 50%;
+  transform: translateX(-50%);
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-size: 0.3em;
+  line-height: 1.3;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: #b8c5d4;
+  white-space: nowrap;
+  text-align: center;
+}
+.cjk-cell .pinyin.unknown {
+  color: #e3bd7d;
+}
+.reading-area.has-pinyin .anchor-guide.top {
+  top: -22px;
+}
+.transcript-words .cjk-cell {
+  font-size: 18px;
+  min-width: 32px;
+  margin-top: 15px;
+}
+.transcript-words .cjk-cell .pinyin {
+  font-size: 10px;
+}
+.transcript-words > button:has(.cjk-cell) {
+  display: inline-block;
+  margin-bottom: 7px;
+}
+.text-block .pinyin-review p {
+  font-size: 12px;
+  color: var(--muted);
+}
+@media (max-width: 700px) {
+  .home-main {
+    padding-top: 34px;
+    display: flex;
+  }
+  .intro {
+    padding-bottom: 25px;
+  }
+  .intro h1 {
+    font-size: 36px;
+    letter-spacing: -1px;
+    max-width: none;
+  }
+  .intro > p {
+    font-size: 13px;
+  }
+  .intro .trust {
+    font-size: 11px;
+    margin: 16px 0 0;
+  }
+  .home-lower {
+    gap: 24px;
+  }
+  .preview-card {
+    padding-left: 0;
+  }
+  .app-header nav > button {
+    min-height: 40px;
+  }
+  .app-footer > button {
+    font-size: 0;
+  }
+  .app-footer {
+    font-size: 10px;
+  }
+  .preparation-options {
+    order: initial;
+  }
+  .reader-bottom {
+    bottom: 20px;
+  }
+  .playback-bar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .playback-bar > .control-group:not(.secondary) {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    width: 100%;
+    gap: 0;
+  }
+  .playback-bar > .control-group:not(.secondary) > button {
+    width: 100%;
+    height: 44px;
+  }
+  .playback-bar > .control-group > .play-button {
+    width: 42px !important;
+    height: 42px !important;
+    margin: 0 auto !important;
+  }
+  .reader-speed {
+    min-width: 90px;
+    margin: 0 10px;
+  }
+  .control-group.secondary {
+    width: auto;
+    flex: 1;
+    justify-content: space-around;
+    border-top: 0;
+    padding: 0;
+    gap: 0;
+  }
+  .control-group.secondary > button {
+    width: 40px;
+    height: 40px;
+  }
+  .reader-pace {
+    padding: 0;
+  }
+  .compact .presets > button {
+    font-size: 9px;
+    padding: 5px 3px;
+    min-height: 30px;
+  }
+  .progress-meta {
+    font-size: 9px;
+  }
+  .reader-title > small {
+    font-size: 9px;
+  }
+  .reading-status {
+    font-size: 10px;
+  }
 }

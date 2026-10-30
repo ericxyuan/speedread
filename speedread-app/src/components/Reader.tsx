@@ -1,3 +1,4 @@
+import { AnnotatedText } from "./AnnotatedText";
 import { SpeedInput } from "./SpeedInput";
 import {
   useEffect,
@@ -29,14 +30,16 @@ import {
 } from "lucide-react";
 import type { ReadingDocument, Preferences } from "../types";
 import { PlaybackEngine } from "../lib/timing";
-import { anchorIndex, effectiveWpm } from "../lib/tokenisation";
+import { anchorIndex, effectiveWpm } from "../lib/reading-metrics";
 import { SpeedControl } from "./SpeedControl";
 import { Settings } from "./Settings";
 export function AnchorWord({
   text,
   prefs,
+  pinyin,
 }: {
   text: string;
+  pinyin?: string[];
   prefs: Preferences;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -76,7 +79,7 @@ export function AnchorWord({
   }, [text, prefs.fontSize, prefs.fontFamily, prefs.fontWeight, prefs.spacing]);
   return (
     <div
-      className="word-stage"
+      className={`word-stage ${pinyin && prefs.showPinyin ? "has-pinyin" : ""}`}
       aria-label={text}
       style={{
         fontSize: `clamp(28px, 8vw, ${prefs.fontSize}px)`,
@@ -92,14 +95,30 @@ export function AnchorWord({
         aria-hidden="true"
         style={{ transform: `translateX(-50%) scale(${scale})` }}
       >
-        <span className="word-before">{chars.slice(0, i).join("")}</span>
+        <span className="word-before">
+          <AnnotatedText
+            text={chars.slice(0, i).join("")}
+            pinyin={pinyin?.slice(0, i)}
+            show={prefs.showPinyin}
+          />
+        </span>
         <span
           className="word-anchor"
           style={{ color: prefs.anchorColor || "var(--accent)" }}
         >
-          {chars[i]}
+          <AnnotatedText
+            text={chars[i] ?? ""}
+            pinyin={pinyin?.slice(i, i + 1)}
+            show={prefs.showPinyin}
+          />
         </span>
-        <span className="word-after">{chars.slice(i + 1).join("")}</span>
+        <span className="word-after">
+          <AnnotatedText
+            text={chars.slice(i + 1).join("")}
+            pinyin={pinyin?.slice(i + 1)}
+            show={prefs.showPinyin}
+          />
+        </span>
       </div>
     </div>
   );
@@ -346,7 +365,7 @@ export default function Reader({
       </header>
       {view !== "transcript" && (
         <div
-          className="reading-area"
+          className={`reading-area ${token?.pinyin && prefs.showPinyin ? "has-pinyin" : ""}`}
           onTouchStart={(e) => {
             touch.current = {
               x: e.touches[0].clientX,
@@ -369,7 +388,11 @@ export default function Reader({
               <span className="anchor-guide bottom" />
             </>
           )}
-          <AnchorWord text={token?.text ?? "Ready"} prefs={prefs} />
+          <AnchorWord
+            text={token?.text ?? "Ready"}
+            pinyin={token?.pinyin}
+            prefs={prefs}
+          />
           <p className="reading-status chrome">
             {state.ended
               ? "Session complete. Take a moment to reflect."
@@ -451,7 +474,11 @@ export default function Reader({
                   engine.seek(t.id);
                 }}
               >
-                {t.text}
+                <AnnotatedText
+                  text={t.text}
+                  pinyin={t.pinyin}
+                  show={prefs.showPinyin}
+                />
               </button>
             ))}
           </div>

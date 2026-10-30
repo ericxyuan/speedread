@@ -1,6 +1,8 @@
+import { useMemo } from "react";
+import { validatePinyinOverride } from "./lib/pinyin-validation";
 import { SourcePreview } from "./components/SourcePreview";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+
 import {
   ArrowUpRight,
   ArrowRight,
@@ -40,7 +42,7 @@ import {
 } from "./lib/persistence";
 import { extractFile, supported, textBlocks } from "./lib/extraction";
 import { processBlocks } from "./lib/pipeline";
-import { effectiveWpm } from "./lib/tokenisation";
+import { effectiveWpm } from "./lib/reading-metrics";
 import Reader, { AnchorWord } from "./components/Reader";
 import { SpeedControl } from "./components/SpeedControl";
 import { Settings } from "./components/Settings";
@@ -94,7 +96,7 @@ export default function App() {
   const [libraryQuery, setLibraryQuery] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const cancellation = useRef<AbortController | null>(null);
-  const reduced = useReducedMotion();
+
   useEffect(() => {
     try {
       localStorage.setItem("speedread-preferences", JSON.stringify(prefs));
@@ -206,7 +208,10 @@ export default function App() {
     document.addEventListener("paste", handler);
     return () => document.removeEventListener("paste", handler);
   }, [screen, busy]);
-  async function prepare(selected = files.map((f) => f.file), demo = false) {
+  async function prepare(
+    selected = files.map((f) => f.file),
+    demo: boolean | "chinese" = false,
+  ) {
     if (busy) return;
     setBusy(true);
     setError("");
@@ -217,7 +222,12 @@ export default function App() {
       let warnings: string[] = [];
       const sources: ReadingDocument["sources"] = [];
       if (demo || input === "text") {
-        const value = demo ? sample : text;
+        const value =
+          demo === "chinese"
+            ? "我们可以一起阅读中文。每个词都会完整显示，拼音位于对应汉字的上方。\n\n银行行长来到重庆，重新阅读这份报告。音乐让人快乐，学习需要耐心。\n\n你可以随时暂停，返回上一句，或者调整阅读速度。"
+            : demo
+              ? sample
+              : text;
         if (!value.trim()) throw new Error("Add some text to begin.");
         const id = crypto.randomUUID();
         blocks = textBlocks(
@@ -243,6 +253,7 @@ export default function App() {
             selected[i],
             controller.signal,
             setStatus,
+            prefs.ocrLanguage,
           );
           blocks.push(...result.blocks);
           warnings.push(...result.warnings);
@@ -268,13 +279,16 @@ export default function App() {
       const now = Date.now();
       const next: ReadingDocument = {
         id: crypto.randomUUID(),
-        title: demo
-          ? "A little room to focus"
-          : input === "text"
-            ? title.trim() || "Untitled reading"
-            : selected.length === 1
-              ? selected[0].name.replace(/\.[^.]+$/, "")
-              : `${selected[0].name.replace(/\.[^.]+$/, "")} + ${selected.length - 1}`,
+        title:
+          demo === "chinese"
+            ? "中文阅读练习"
+            : demo
+              ? "A little room to focus"
+              : input === "text"
+                ? title.trim() || "Untitled reading"
+                : selected.length === 1
+                  ? selected[0].name.replace(/\.[^.]+$/, "")
+                  : `${selected[0].name.replace(/\.[^.]+$/, "")} + ${selected.length - 1}`,
         format:
           demo || input === "text"
             ? "TEXT"
@@ -345,14 +359,44 @@ export default function App() {
       cancellation.current = null;
     }
   }
-  const openDoc = (d: ReadingDocument) => {
-    const next = { ...d, opened: Date.now() };
-    setDoc(next);
-    setFilter(d.mode);
-    setPreview("cleaned");
-    setBlockPage(0);
-    setScreen("prepare");
-    void persist(next);
+  const openDoc = async (d: ReadingDocument) => {
+    try {
+      if (
+        d.blocks.some((b) => /\p{Script=Han}/u.test(b.cleaned)) &&
+        !d.tokens.some((t) => t.pinyin)
+      ) {
+        setBusy(true);
+        setStatus("Preparing Chinese word boundaries and pinyin");
+        const result = await processBlocks(
+          d.blocks,
+          d.mode,
+          undefined,
+          prefs.numericLocale,
+        );
+        const source = d.tokens[d.position]?.sourceBlockId;
+        d = {
+          ...d,
+          ...result,
+          position: Math.max(
+            0,
+            result.tokens.findIndex((t) => t.sourceBlockId === source),
+          ),
+        };
+      }
+      const next = { ...d, opened: Date.now() };
+      setDoc(next);
+      setFilter(d.mode);
+      setPreview("cleaned");
+      setBlockPage(0);
+      setScreen("prepare");
+      await persist(next);
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Could not open this reading.",
+      );
+    } finally {
+      setBusy(false);
+    }
   };
   const back = () => {
     if (docRef.current) setDoc(docRef.current);
@@ -365,6 +409,20 @@ export default function App() {
         (preview === "excluded" ? !b.included : b.included),
     ) ?? [];
   const excluded = doc?.blocks.filter((b) => !b.included).length ?? 0;
+  const pinyinByBlock = useMemo(() => {
+    const pinyinByBlock = new Map<string, string[]>();
+    for (const token of doc?.tokens ?? []) {
+      if (token.pinyin) {
+        const marks = pinyinByBlock.get(token.sourceBlockId) ?? [];
+        for (let i = 0; i < token.pinyin.length; i++)
+          if (/\p{Script=Han}/u.test(Array.from(token.text)[i] ?? ""))
+            marks.push(token.pinyin[i] || "·");
+        pinyinByBlock.set(token.sourceBlockId, marks);
+      }
+    }
+    return pinyinByBlock;
+  }, [doc?.tokens]);
+
   const style = {
     "--accent": speedColor(prefs.wpm),
     "--glow-opacity": prefs.glow ? prefs.glowIntensity : 0,
@@ -471,30 +529,20 @@ export default function App() {
       )}
       {screen === "home" && (
         <main className="home-main">
-          <motion.section
-            className="intro"
-            initial={reduced ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-            <div className="eyebrow">
-              <span />
-              LESS NOISE. MORE MEANING.
-            </div>
+          <section className="intro">
             <h1>
-              Make room <br />
-              for the <em>words.</em>
+              Read at your <em>pace.</em>
             </h1>
             <p>
-              Your documents, one word at a time.
+              Upload a document or paste text, review the extraction,
               <br />
-              Find your rhythm. Stay with the thought.
+              then read one word at a time.
             </p>
             <div className="trust">
               <ShieldCheck size={15} />
-              <span>Processed on your device. Yours to keep.</span>
+              <span>Your files stay on this device.</span>
             </div>
-          </motion.section>
+          </section>
           <section className="import-card" aria-label="Import reading material">
             <div className="import-tabs">
               <button
@@ -529,7 +577,7 @@ export default function App() {
                       <Plus size={12} />
                     </span>
                   </div>
-                  <strong>Drop something worth reading.</strong>
+                  <strong>Add a document to read.</strong>
                   <span>
                     Drag your files here, or <u>browse files</u>
                   </span>
@@ -630,7 +678,7 @@ export default function App() {
             <div className="import-bottom">
               <span>
                 <ShieldCheck size={13} />
-                Private by default
+                No account needed
               </span>
               {(files.length > 0 || input === "text") && (
                 <button
@@ -647,9 +695,13 @@ export default function App() {
             </div>
           </section>
           <div className="sample-link">
-            <span>Just looking around?</span>
+            <span>Start with an example</span>
             <button onClick={() => void prepare([], true)} disabled={busy}>
               Try a sample
+              <ArrowUpRight size={15} />
+            </button>
+            <button onClick={() => void prepare([], "chinese")} disabled={busy}>
+              Try Chinese
               <ArrowUpRight size={15} />
             </button>
           </div>
@@ -661,7 +713,7 @@ export default function App() {
               />
             </div>
             <div className="preview-card">
-              <span className="eyebrow">ONE WORD. YOUR FULL ATTENTION.</span>
+              <span className="eyebrow">Reader preview</span>
               <div className="mini-reader">
                 <span className="mini-guide" />
                 <AnchorWord
@@ -670,7 +722,7 @@ export default function App() {
                 />
               </div>
               <span className="subtle">
-                A steady anchor. A little less distraction.
+                The highlighted letter stays centred.
               </span>
             </div>
           </section>
@@ -716,7 +768,7 @@ export default function App() {
               <h1>
                 Reading library<span className="brand-dot">.</span>
               </h1>
-              <p>Good ideas, ready when you are.</p>
+              <p>Your documents and saved reading positions.</p>
             </div>
             <button className="primary" onClick={() => setScreen("home")}>
               <Plus size={16} />
@@ -838,7 +890,7 @@ export default function App() {
             <div>
               <div className="eyebrow">
                 <Check size={12} />
-                READY FOR A CLOSER LOOK
+                Extraction ready
               </div>
               <h1>{doc.title}</h1>
               <p>
@@ -1041,25 +1093,99 @@ export default function App() {
                           )}
                         </>
                       ) : preview === "cleaned" ? (
-                        <textarea
-                          aria-label={`Edit block ${b.order + 1}`}
-                          defaultValue={b.cleaned}
-                          rows={Math.max(
-                            2,
-                            Math.min(12, Math.ceil(b.cleaned.length / 85)),
+                        <>
+                          <textarea
+                            aria-label={`Edit block ${b.order + 1}`}
+                            defaultValue={b.cleaned}
+                            rows={Math.max(
+                              2,
+                              Math.min(12, Math.ceil(b.cleaned.length / 85)),
+                            )}
+                            disabled={busy}
+                            onBlur={(e) => {
+                              const value = e.target.value;
+                              if (value !== b.cleaned)
+                                void reprocess(
+                                  doc.blocks.map((x) =>
+                                    x.id === b.id
+                                      ? {
+                                          ...x,
+                                          cleaned: value,
+                                          pinyinOverride: undefined,
+                                        }
+                                      : x,
+                                  ),
+                                  doc.mode,
+                                );
+                            }}
+                          />
+                          {pinyinByBlock.has(b.id) && (
+                            <details className="pinyin-review">
+                              <summary>Review pinyin</summary>
+                              <p className="subtle">
+                                Phrase-aware pronunciation. Check names and
+                                ambiguous readings; enter one syllable for each
+                                Chinese character.
+                              </p>
+                              <input
+                                key={b.pinyinOverride ?? "automatic"}
+                                aria-label={`Edit pinyin for block ${b.order + 1}`}
+                                defaultValue={
+                                  b.pinyinOverride ??
+                                  pinyinByBlock.get(b.id)?.join(" ")
+                                }
+                                disabled={busy}
+                                onBlur={(e) => {
+                                  const value = e.target.value.trim();
+                                  const current =
+                                    b.pinyinOverride ??
+                                    pinyinByBlock.get(b.id)?.join(" ");
+                                  if (value !== current) {
+                                    try {
+                                      validatePinyinOverride(b.cleaned, value);
+                                      void reprocess(
+                                        doc.blocks.map((x) =>
+                                          x.id === b.id
+                                            ? {
+                                                ...x,
+                                                pinyinOverride:
+                                                  value || undefined,
+                                              }
+                                            : x,
+                                        ),
+                                        doc.mode,
+                                      );
+                                    } catch (error) {
+                                      setError(
+                                        error instanceof Error
+                                          ? error.message
+                                          : "Check the pinyin syllables.",
+                                      );
+                                    }
+                                  }
+                                }}
+                              />
+                              {b.pinyinOverride && (
+                                <button
+                                  className="text-button"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void reprocess(
+                                      doc.blocks.map((x) =>
+                                        x.id === b.id
+                                          ? { ...x, pinyinOverride: undefined }
+                                          : x,
+                                      ),
+                                      doc.mode,
+                                    )
+                                  }
+                                >
+                                  Use automatic pinyin
+                                </button>
+                              )}
+                            </details>
                           )}
-                          disabled={busy}
-                          onBlur={(e) => {
-                            const value = e.target.value;
-                            if (value !== b.cleaned)
-                              void reprocess(
-                                doc.blocks.map((x) =>
-                                  x.id === b.id ? { ...x, cleaned: value } : x,
-                                ),
-                                doc.mode,
-                              );
-                          }}
-                        />
+                        </>
                       ) : (
                         <>
                           <p>{b.original}</p>
@@ -1093,7 +1219,7 @@ export default function App() {
               <div className="option-card">
                 <div className="option-title">
                   <Layers size={16} />
-                  <h2>Keep the meaning.</h2>
+                  <h2>Content filtering</h2>
                 </div>
                 <p>
                   Extraction and cleanup. Your author’s words stay their own.
@@ -1151,7 +1277,7 @@ export default function App() {
               <div className="option-card sources">
                 <div className="option-title">
                   <Eye size={16} />
-                  <h2>Check the source.</h2>
+                  <h2>Original files</h2>
                 </div>
                 {doc.sources.map((s) => (
                   <button key={s.id} onClick={() => download(s.blob, s.name)}>
@@ -1198,7 +1324,7 @@ export default function App() {
         <div className="processing-overlay">
           <div className="processing-card" role="status">
             <LoaderCircle className="spinner" size={24} />
-            <h2>A little clarity is on its way.</h2>
+            <h2>Preparing your reading</h2>
             <p>{status}</p>
             <button onClick={() => cancellation.current?.abort()}>
               Cancel processing
@@ -1258,7 +1384,9 @@ export default function App() {
               <p>
                 Upload a document, inspect the extracted words, then settle into
                 a comfortable pace. Your documents are processed and saved on
-                this device. No account or API key is needed.
+                this device. No account or API key is needed. Chinese reads as
+                whole words, with phrase-aware pinyin above each character.
+                Review ambiguous names and edit pinyin before reading.
               </p>
               <div className="shortcut-grid">
                 {[
@@ -1283,9 +1411,11 @@ export default function App() {
               </p>
               <p>
                 PDF, DOCX, DOC, TXT, Markdown, HTML, PNG, JPEG, WEBP, TIFF and
-                BMP are accepted. English OCR runs locally. Legacy DOC
-                extraction supports the main body of Word 97–2003 files; convert
-                unsupported or encrypted files to DOCX.
+                BMP are accepted. English, simplified Chinese and traditional
+                Chinese OCR run locally; choose the OCR language in preferences
+                before importing. Legacy DOC extraction supports the main body
+                of Word 97–2003 files; convert unsupported or encrypted files to
+                DOCX.
               </p>
               <p>
                 There is no file-size cap. Your browser’s memory and storage

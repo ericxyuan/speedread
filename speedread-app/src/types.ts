@@ -20,6 +20,7 @@ export interface Block {
   reason?: string;
   override?: boolean;
   tableReadable?: boolean;
+  pinyinOverride?: string;
 }
 export interface Token {
   id: number;
@@ -30,6 +31,7 @@ export interface Token {
   sourceBlockId: string;
   multiplier: number;
   paragraphEnd: boolean;
+  pinyin?: string[];
 }
 export interface ReadingDocument {
   id: string;
@@ -59,6 +61,8 @@ export interface Preferences {
   anchorOffset: number;
   pauseHidden: boolean;
   numericLocale: string;
+  showPinyin: boolean;
+  ocrLanguage: string;
 }
 export const defaults: Preferences = {
   wpm: 250,
@@ -75,6 +79,8 @@ export const defaults: Preferences = {
   anchorOffset: 0,
   pauseHidden: true,
   numericLocale: "en-GB",
+  showPinyin: true,
+  ocrLanguage: "eng",
 };
 export const presets = [
   {

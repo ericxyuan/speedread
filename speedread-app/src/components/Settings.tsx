@@ -12,6 +12,29 @@ export function Settings({
     <div className="settings-form">
       <label className="switch-row">
         <span>
+          Pinyin above Chinese
+          <small>One syllable aligned with each character</small>
+        </span>
+        <input
+          type="checkbox"
+          checked={prefs.showPinyin}
+          onChange={(e) => set("showPinyin", e.target.checked)}
+        />
+      </label>
+      <label>
+        OCR language
+        <select
+          aria-label="OCR language"
+          value={prefs.ocrLanguage}
+          onChange={(e) => set("ocrLanguage", e.target.value)}
+        >
+          <option value="eng">English</option>
+          <option value="eng+chi_sim">简体中文 + English</option>
+          <option value="eng+chi_tra">繁體中文 + English</option>
+        </select>
+      </label>
+      <label className="switch-row">
+        <span>
           Adaptive timing
           <small>Extra time for punctuation and complex words</small>
         </span>

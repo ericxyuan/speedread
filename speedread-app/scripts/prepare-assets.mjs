@@ -25,14 +25,15 @@ for (const dir of ["cmaps", "standard_fonts"])
   cpSync(path.join(pdf, dir), path.resolve("public/pdf", dir), {
     recursive: true,
   });
-if (!existsSync(path.join(dest, "eng.traineddata.gz"))) {
-  const res = await fetch(
-    "https://tessdata.projectnaptha.com/4.0.0/eng.traineddata.gz",
-  );
-  if (!res.ok) throw new Error("Unable to fetch English OCR model");
-  writeFileSync(
-    path.join(dest, "eng.traineddata.gz"),
-    new Uint8Array(await res.arrayBuffer()),
-  );
-}
+for (const language of ["eng", "chi_sim", "chi_tra"])
+  if (!existsSync(path.join(dest, `${language}.traineddata.gz`))) {
+    const res = await fetch(
+      `https://tessdata.projectnaptha.com/4.0.0/${language}.traineddata.gz`,
+    );
+    if (!res.ok) throw new Error(`Unable to fetch ${language} OCR model`);
+    writeFileSync(
+      path.join(dest, `${language}.traineddata.gz`),
+      new Uint8Array(await res.arrayBuffer()),
+    );
+  }
 console.log("Local OCR and PDF assets ready.");

@@ -1,20 +1,22 @@
 import { createWorker, PSM } from "tesseract.js";
 import type { Worker as TesseractWorker } from "tesseract.js";
+let currentPage = 1;
 let engine: TesseractWorker | null = null;
 self.onmessage = async (
-  e: MessageEvent<{ buffer: ArrayBuffer; page: number }>,
+  e: MessageEvent<{ buffer: ArrayBuffer; page: number; language: string }>,
 ) => {
+  currentPage = e.data.page;
   try {
     if (!engine) {
       const root = new URL("/ocr/", self.location.origin).href;
-      engine = await createWorker("eng", 1, {
+      engine = await createWorker(e.data.language.split("+"), 1, {
         workerPath: new URL("worker.min.js", root).href,
         corePath: root,
         langPath: root,
         workerBlobURL: false,
         logger: (m) =>
           self.postMessage({
-            progress: `OCR page ${e.data.page} · ${m.status} ${Math.round((m.progress ?? 0) * 100)}%`,
+            progress: `OCR page ${currentPage} · ${m.status} ${Math.round((m.progress ?? 0) * 100)}%`,
           }),
         errorHandler: (error) =>
           self.postMessage({

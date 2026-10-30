@@ -1,15 +1,7 @@
+import { chineseReadings, readingParts, hasChinese } from "./chinese";
+import { anchorIndex } from "./reading-metrics";
+export { anchorIndex, effectiveWpm } from "./reading-metrics";
 import type { Block, Token } from "../types";
-export function anchorIndex(text: string, offset = 0) {
-  const letters = Array.from(text);
-  const first = letters.findIndex((c) => /[\p{L}\p{N}]/u.test(c));
-  const length = letters.filter((c) => /[\p{L}\p{N}]/u.test(c)).length;
-  const n =
-    length <= 1 ? 0 : length <= 5 ? 1 : length <= 9 ? 2 : length <= 13 ? 3 : 4;
-  return Math.max(
-    0,
-    Math.min(letters.length - 1, Math.max(0, first) + n + offset),
-  );
-}
 const unit =
   /^(?:km|cm|mm|m|kg|mg|g|ml|mL|L|s|ms|Hz|kHz|MHz|GHz|W|kW|V|mV|°C|°F|K|Pa|kPa|MPa|N|J|kJ|MB|GB|TB|million|billion|trillion)(?:[.,;:!?])?$/;
 const decimalCommaCache = new Map<string, boolean>();
@@ -38,10 +30,25 @@ export function tokenize(blocks: Block[], locale = "en-GB"): Token[] {
   for (let bi = 0; bi < included.length; bi++) {
     const block = included[bi];
     const following = included[bi + 1];
-    const paragraphs = block.cleaned.split(/\n\s*\n/);
+    const readingText = block.cleaned.replace(
+      /(\p{Script=Han})[^\S\n]*\n(?![^\S\n]*\n)[^\S\n]*(?=\p{Script=Han})/gu,
+      "$1",
+    );
+    const readings = hasChinese(readingText)
+      ? chineseReadings(readingText, block.pinyinOverride)
+      : new Map<number, string>();
+    const paragraphs = readingText.split(/\n\s*\n/);
+    let paragraphCursor = 0;
     for (let p = 0; p < paragraphs.length; p++) {
-      const parts = paragraphs[p].match(/\S+/gu) ?? [];
+      const paragraphStart = readingText.indexOf(
+        paragraphs[p],
+        paragraphCursor,
+      );
+      paragraphCursor = paragraphStart + paragraphs[p].length;
+      const detailed = readingParts(paragraphs[p], readings, paragraphStart);
+      const parts = detailed.map((part) => part.text);
       for (let i = 0; i < parts.length; i++) {
+        const originalPart = i;
         let raw = parts[i];
         if (/^[\p{Sc}−+\-]?\d/u.test(raw)) {
           while (
@@ -74,11 +81,11 @@ export function tokenize(blocks: Block[], locale = "en-GB"): Token[] {
           following.page !== block.page &&
           following.type === "paragraph" &&
           block.type === "paragraph" &&
-          !/[.!?:;”"’']$/.test(raw);
+          !/[.!?:;。！？；：”"’']$/.test(raw);
         const end =
           i === parts.length - 1 && !(p === paragraphs.length - 1 && continues);
         const isSentence =
-          /[.!?][”’"')\]]*$/.test(text) &&
+          /[.!?。！？][”’"')\]）》」』]*$/.test(text) &&
           !/(?:\b(?:Mr|Mrs|Ms|Dr|Prof|St|vs|etc|e\.g|i\.e)|\b[A-Z])\.$/.test(
             text,
           );
@@ -88,7 +95,7 @@ export function tokenize(blocks: Block[], locale = "en-GB"): Token[] {
           Math.max(
             end ? 1.7 : 1,
             isSentence ? 1.5 : 1,
-            /[;:]$/.test(text) ? 1.3 : /,$/.test(text) ? 1.15 : 1,
+            /[;:；：]$/.test(text) ? 1.3 : /[,，、]$/.test(text) ? 1.15 : 1,
             n > 16 ? 1.4 : n > 9 ? 1.2 : 1,
           ),
         );
@@ -101,18 +108,11 @@ export function tokenize(blocks: Block[], locale = "en-GB"): Token[] {
           sourceBlockId: block.id,
           multiplier,
           paragraphEnd: end,
+          pinyin: detailed[originalPart].pinyin,
         });
         if (isSentence || end) sentence++;
       }
     }
   }
   return tokens;
-}
-export function effectiveWpm(tokens: Token[], wpm: number, adaptive: boolean) {
-  return tokens.length
-    ? Math.round(
-        (wpm * tokens.length) /
-          tokens.reduce((s, t) => s + (adaptive ? t.multiplier : 1), 0),
-      )
-    : wpm;
 }

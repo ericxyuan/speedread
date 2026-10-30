@@ -10,6 +10,7 @@ export class LocalOCR {
   constructor(
     private signal: AbortSignal,
     private progress: (message: string) => void,
+    private language = "eng",
   ) {
     signal.addEventListener("abort", this.abort, { once: true });
   }
@@ -36,7 +37,12 @@ export class LocalOCR {
             "The local OCR engine could not start. Reload the app and try again.",
           ),
         );
-      this.worker.postMessage({ buffer, page }, [buffer]);
+      const language = ["eng", "eng+chi_sim", "eng+chi_tra"].includes(
+        this.language,
+      )
+        ? this.language
+        : "eng";
+      this.worker.postMessage({ buffer, page, language }, [buffer]);
     });
   }
   destroy() {

@@ -17,7 +17,7 @@ pnpm dev
 
 Open the Local URL printed by Vite, normally `http://127.0.0.1:5173`.
 
-The source includes the OCR model and PDF support assets. `prepare-assets.mjs` restores the assets from installed packages and downloads the English language model only when it is absent. At runtime all OCR code, model data, and PDF fonts are served by Speedread itself. Document contents are never sent to an extraction service.
+The source includes OCR models and PDF support assets. `prepare-assets.mjs` restores the assets from installed packages and downloads English, simplified Chinese and traditional Chinese models only when absent. At runtime all OCR code, model data, and PDF fonts are served by Speedread itself. Document contents are never sent to an extraction service.
 
 ```sh
 pnpm test
@@ -41,6 +41,7 @@ With npm, substitute `npm install`, `npm run dev`, `npm test`, and `npm run buil
 - PDF page and image preview. A PDF source block is outlined on the original page when bounds are available.
 - Six named speed presets and custom 100–2000 WPM, strict or adaptive pacing, nominal and estimated effective WPM, pause/resume, word/five-word/sentence seeking, timeline, fullscreen and automatic hidden-tab pause.
 - Fixed anchor coordinate with variable-width glyph layout and long-token scaling. Instant word replacement, restrained speed-colour interpolation, adjustable typography, guides, glow, anchor colour, number notation and reduced-motion support.
+- Chinese whole-word segmentation (for example, 可以 remains one displayed word), phrase-context pinyin and a separate annotation cell above each Han character. Simplified and traditional text retain their original characters. Pinyin can be hidden or corrected per source block, and corrections are saved with the reading.
 - Searchable, bounded transcript windows (120 tokens), section navigation, reader/transcript/split views, touch swipes, keyboard controls and focused-control visibility.
 - IndexedDB library, original files, extraction decisions, corrections and progress. Position saves use a small separate record rather than rewriting entire documents during playback. Rename, delete and clear all local data are available.
 
@@ -62,7 +63,8 @@ Extraction is deterministic cleanup, not summarisation or an AI claim to underst
 
 - Complex multi-column layouts, sidebars, footnotes, text boxes, rotated text and tables can require review. Simple PDF tables with aligned header cells and numeric rows become labelled statements; ambiguous or complex relationships still need manual review. Simple HTML tables with explicit headers become labelled statements. Tables without reliable headers are retained as excluded source blocks for review.
 - Mixed-PDF OCR targets separate raster regions without useful embedded text. Images overlapping a usable text layer use that layer to prevent duplication; partially overlapping or fragmented layers can require manual image import and review.
-- OCR is English initially. Automatic rotation and segmentation are enabled; blurred handwriting, mathematical notation, diagrams and poor scans remain difficult. No missing words are invented. Low confidence is highlighted, but confidence is not a guarantee of accuracy.
+- OCR supports English, simplified Chinese with English, and traditional Chinese with English. Choose the language in Reading preferences before importing. Automatic rotation and segmentation are enabled; blurred handwriting, mathematical notation, diagrams and poor scans remain difficult. No missing words are invented. Low confidence is highlighted, but confidence is not a guarantee of accuracy.
+- Chinese word boundaries use the browser's Chinese word segmenter. Pinyin is computed for the complete block before splitting words, with a traditional-character dictionary and tone marks. Names, dialect readings and genuinely ambiguous sentences can still require correction: open Review pinyin in the preparation screen, enter one syllable per Han character and leave the field to save. Automatic pronunciation is not a universal correctness guarantee. Chinese WPM counts segmented words, which is not directly comparable with English WPM.
 - Legacy DOC supports unencrypted Word 97–2003 main-body piece tables, including Unicode pieces and Western compressed text. Other code pages, older DOC variants, fields and complex tables may need conversion to DOCX. A DOC is never passed to the DOCX parser.
 - Number notation defaults to decimal-point English. Choose decimal-comma notation in preferences and reprocess the document when appropriate. Ambiguous identifiers and local conventions still require review.
 - The transcript uses bounded windows and pagination rather than an unbounded DOM. It is not continuous scrolling virtualisation.
@@ -72,4 +74,4 @@ Speed is not a comprehension guarantee. The default is 250 WPM, backwards naviga
 
 ## Next improvements
 
-Add a larger reference corpus with human-verified reading order, improve table and sidebar segmentation, add OCR languages, use lazy library metadata loading and chunked token storage for very large collections, and qualify real mobile and screen-reader use. Any future cloud analysis should be explicit opt-in and explain the transmitted content.
+Add a larger reference corpus with human-verified reading order, improve table and sidebar segmentation, extend OCR language coverage, use lazy library metadata loading and chunked token storage for very large collections, and qualify real mobile and screen-reader use. Any future cloud analysis should be explicit opt-in and explain the transmitted content.
