@@ -1,8 +1,8 @@
 # Speedread — work summary
 
-Recorded 30 October 2026. Repository `ericxyuan/speedread`, commit
+Recorded 30 October 2026. Repository `ericxyuan/speedread`, application commit
 `322c72408d6dc848728ad290f1606e029ab7bc4c` ("Add Chinese word reading and
-character-aligned pinyin").
+character-aligned pinyin"), record commit `f9fa7f3`.
 
 ## What the project is
 
@@ -41,24 +41,31 @@ support.
 ## Verification performed in this continuation
 
 Environment: Linux cloud workspace, Node 24.21.0, pnpm 11.25.0 via Corepack,
-frozen lockfile unchanged.
+frozen lockfile unchanged. Microsoft Edge is not available here, so the browser
+suite ran on Playwright Chromium headless shell 156.0.8078.4 through a temporary
+config that omits the committed `msedge` channel. Chromium's missing NSS/X11
+libraries and Noto CJK fonts were extracted into a user-space sysroot under the
+workspace home; no root access or system packages were used. The temporary
+config and logs were deleted and generated fixtures were restored afterwards.
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Dependency restore | `corepack pnpm install --frozen-lockfile` | Passed, no lockfile change |
-| Unit tests | `corepack pnpm test` | 59/59 passed (45 core, 14 Chinese) |
-| Typecheck and production build | `corepack pnpm build` (`tsc -b && vite build`) | Passed |
-| Git state | `git rev-parse HEAD`, `git log origin/main...HEAD` | `322c724` equals `origin/main`; no local modifications |
+| Dependency restore | `pnpm install --frozen-lockfile` | Passed, no lockfile change |
+| Unit tests | `pnpm test` | 59/59 passed (45 core, 14 Chinese) |
+| Typecheck and production build | `pnpm build` (`tsc -b && vite build`) | Passed |
+| Browser suite | `npx playwright test` (temporary Chromium config) | 21/21 passed in 59.3 s |
+| Chinese OCR and alignment | included above, 1440 px and 390 px | Passed; pinyin centred within 1 CSS px, no horizontal overflow |
+| Strict 500 WPM playback | timing assertion in `e2e/app.spec.ts` | 120.3 ms/token over 16 intervals |
+| Git state | `git status --short` after cleanup | Clean working tree; `f9fa7f3` plus this record |
 
 The production build emits `dist/` with bundled workers for OCR, PDF, Office,
 TIFF and pipeline processing.
 
 ## Not verified in this environment
 
-- The Playwright suite uses `channel: "msedge"`, and this Linux workspace has
-  neither Edge nor Playwright Chromium installed. The suite was therefore not
-  re-run here; the recorded result from the Windows host is 21 passing tests
-  (20 declarations, one parameterised over 1440 px and 390 px).
+- The committed Playwright config targets Microsoft Edge on Windows. That exact
+  channel was not re-run here; the same 21 tests passed on Chromium headless in
+  this Linux workspace instead.
 - Real iOS/Android hardware, assistive technology and browsers other than
   Chromium/Edge remain unqualified, as stated in the README.
 - Universal polyphone accuracy and every document layout are not claimed.
@@ -81,7 +88,10 @@ Remaining action, on the original host that owns the private Site:
 
 ## Continuation state
 
-Authorised implementation work is complete and the verified commit is on
-GitHub. No application code was changed in this continuation; it added this
-summary and refreshed the checkpoint in `RESUME_SPEEDREAD.md`. Reproduction steps
-are in the root `README.md`.
+Authorised implementation work is complete and the application commit is on
+GitHub. This continuation changed no application code: it restored dependencies
+from the frozen lockfile, re-ran the 59 unit tests, the typecheck and production
+build, and the full 21-test browser suite on Chromium headless, then recorded
+the result here and in `RESUME_SPEEDREAD.md`. Generated fixtures and bundled OCR
+assets were restored to their committed versions; no lockfile, source or build
+configuration changed. Reproduction steps are in the root `README.md`.
