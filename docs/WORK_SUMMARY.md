@@ -1,9 +1,26 @@
 # Speedread — work summary
 
-Recorded 30 October 2026. Repository `ericxyuan/speedread`, implementation commit
-`82df928` (pinyin and numeric hardening) on top of `c88105e` (Chinese word
-reading and character-aligned pinyin), authored by `ericxyuan`. Documentation is
-in the record commit that follows.
+Recorded 30 October 2026. Repository `ericxyuan/speedread`. Code commit
+`03a8224` ("Split traditional OCR model for Sites file limits") is on
+`origin/main`; the record commit follows it. Both were force-pushed as
+`ericxyuan`. The private Site is live at
+`https://speedread.ericxyuan.chatgpt.site`.
+
+## Published release
+
+| Item | Value |
+| --- | --- |
+| Sites project | `appgprj_6ae4f4222af08191898caecebe55bbb9` |
+| Saved version | **3** — `appgprj_6ae4f4222af08191898caecebe55bbb9~appgver_76fbd90ab6bc8191a832000421bae114` |
+| Deployment | `appgdep_6ae523c671c88191a9aaf161976ed06b` — `succeeded` |
+| Site source commit | `429155a649d1b7b06d812ecb3951f23d06253396` |
+| Audience | `custom`, owner account only; unchanged |
+| Release archive | `.sites-runtime/speedread-release-2026-10-30-hardened.tar.gz` |
+| Archive size / SHA-256 | 65,446,370 bytes / `c2914bcd50896b52a58cdb9648da759f2b25feda1e795be598a7f23004e0bed6` |
+| Archive files | 208, largest 20,159,757 bytes |
+
+Version 2 was saved but failed because a single deployment file exceeded the
+Sites 25 MiB limit. Version 3 is the successful replacement.
 
 ## What the project is
 
@@ -20,7 +37,7 @@ timing, a fixed anchor with variable-width glyph layout, backwards navigation,
 transcript search and section jumps, source preview, keyboard and touch
 controls, fullscreen and reduced-motion support.
 
-## Chinese reading and the Apple-derived interface
+## Chinese reading
 
 - Chinese text is segmented into whole words with `Intl.Segmenter`; particles and
   punctuation stay attached to the word they belong to. Soft line breaks inside
@@ -30,64 +47,66 @@ controls, fullscreen and reduced-motion support.
   (yín háng) and 重庆 (chóng qìng). Each Han character receives its own
   annotation cell directly above the character; alignment is independent of the
   anchor and of long-word scaling.
+- A curated phrase lexicon fixes common polyphones, neutral tones and traditional
+  forms (還是, 乾淨, 著火, 瞭解, 學生, 得 complements and others), with a 還
+  context rule for `hái`/`huán`. User corrections are applied last and always
+  win.
 - Pinyin can be hidden, corrected per source block, and reset. Corrections are
   validated one syllable per Han character and persist with the reading.
-  Imported author text is never rewritten.
-- Simplified Chinese OCR uses the bundled local model and preserves whole words;
-  the original OCR path remains available.
+- Simplified and traditional Chinese OCR use bundled local models and preserve
+  whole words; the original OCR path remains available.
 - Interface hierarchy, typography, materials and motion follow
   `speedread-app/DESIGN.md`, derived from Apple Human Interface Guidelines with
-  Fluidity applied. Screenshots are in `docs/`.
+  Fluidity applied.
 
-## Hardening added in this continuation
+## The Sites file-limit fix
 
-The earlier Chinese release passed 59 tests but still had measurable reading
-defects. Two probes and a curated corpus (traditional forms, polyphones, neutral
-tones and numbers) exposed them; this work fixes them without changing the
-automatic engine's broad behaviour.
+The traditional Chinese model, `chi_tra.traineddata.gz`, was 27,120,340 bytes.
+Sites rejects any single deployment file over 26,214,400 bytes (25 MiB), so
+version 2 failed with:
 
-- **Curated phrase lexicon** (`src/lib/pinyin-lexicon.ts`): longest-first entries
-  for common polyphones, neutral tones and traditional variants, including
-  還是/还 of 是 (hái shì), 乾淨 (gān jìng), 著火 (zháo huǒ), 瞭解 (liǎo jiě),
-  學生 (xué sheng), 朋友 (péng you), 時候 (shí hou) and 得 complements. A phrase
-  claims only its own character positions, so a shorter match cannot overwrite a
-  longer word. User corrections are applied afterwards and always win.
-- **還/还 context rule**: `hái` by default, `huán` before return-object
-  characters (錢/款/書/給/原/…) or after return verbs (歸/償/返/退/…), with
-  explicit phrases for exceptions such as 還以顏色. This covers unlisted
-  contexts like 天氣還冷 instead of relying on a finite word list.
-- **Stricter override validation** (`src/lib/pinyin-validation.ts`): a pinyin
-  syllable must have a legal structure and tone marks must sit on the right
-  vowel; `hello`, `abc` and `haǒ` are rejected, neutral tones and `v` for `ü`
-  are accepted. Valid corrections are normalised to lowercase with `ü` for
-  display.
-- **Chinese numeric tokenisation** (`src/lib/tokenisation.ts`): currency signs
-  prefix their number (US$12.50, ¥1,200, €30), decimal and thousands fragments
-  rejoin (3.14, 12,500), percent signs remain attached (25%, 12,500%。), and the
-  grouping handles Chinese punctuation.
-- **Tests**: 285 new unit tests (lexicon readings and longest-match behaviour,
-  traditional forms, 還 contexts, validation edge cases, currency/percent,
-  anchor boundaries, adaptive precedence, scheduler seek/restart/clamp, number
-  formats) plus a production browser test asserting 還是/還冷 reach the reader
-  with corrected readings.
+```
+Invalid manifest: file size of 27120340 exceeds 26214400 limit
+```
+
+The fix has three parts:
+
+1. `scripts/split-dist-ocr.mjs` runs after `vite build`. It partitions
+   `dist/ocr/chi_tra.traineddata.gz` into two 13,560,170-byte parts, writes
+   `chi_tra.parts.json`, removes the oversized original from `dist`, and leaves
+   the source copy in `public/ocr` intact for local development.
+2. `src/lib/ocr-model-cache.ts` fetches the manifest and parts, joins them,
+   validates the gzip header on the assembled result, and writes the joined gzip
+   to the same IndexedDB `keyval-store`/`keyval` entry (`./chi_tra.traineddata`)
+   that Tesseract reads before requesting a language.
+3. `src/workers/ocr.worker.ts` calls that cache preparation before creating the
+   Tesseract worker when `chi_tra` is selected. Local development without a
+   manifest falls back to the original `.gz`.
+
+The largest deployed file is now `chi_sim.traineddata.gz` at 20,159,757 bytes.
+`package.json` `build` is `tsc -b && vite build && node scripts/split-dist-ocr.mjs`.
 
 ## Verification performed
 
-Windows 11, Node 24.22.1 (the Codex runtime; `pnpm` is not on this shell's PATH,
-so commands ran through Node), Microsoft Edge.
+Windows 11, Node 24.22.1 (Codex runtime), Microsoft Edge. `pnpm` was not on this
+shell's PATH, so commands ran through Node directly.
 
-| Check | Command | Result |
-| --- | --- | --- |
-| Unit tests | `node node_modules/vitest/vitest.mjs run` | **344/344 passed** (14 Chinese, 67 core, 263 pinyin/lexicon) |
-| Typecheck | `node node_modules/typescript/bin/tsc -b` | Passed |
-| Production build | `node node_modules/vite/bin/vite.js build` | Passed, 1,602 modules, 96.91 kB gzip main bundle (`index-DFWIjKEX.js`) |
-| Browser suite | `node node_modules/@playwright/test/cli.js test` (Edge, production preview) | **22/22 passed**, including 1440 px and 390 px alignment, correction persistence, simplified Chinese OCR and the new traditional-reading test |
-| Strict 500 WPM | timing assertion in `e2e/app.spec.ts` | 120.2 ms/token over 16 intervals |
-| Hosted-source refresh | Site source helper | 16 modified, 12 new paths; same project ID |
-| Release archive | prepared for Sites | 65,445,379 bytes, SHA-256 `537a60bbfd475593fe08ec834c97cc9db214bc617a378c4904f2c434c5473466` |
+| Check | Result |
+| --- | --- |
+| Unit tests | **344/344 passed** (14 Chinese, 67 core, 263 pinyin/lexicon) |
+| Strict typecheck | `tsc -b` passed |
+| Production build | Passed, 1,602 modules; `index-C3IX9uzI.js` 304.06 kB (96.91 kB gzip); OCR worker 18.14 kB |
+| Browser suite | **23/23 passed** in 49.3 s, including 1440 px and 390 px alignment, traditional readings, correction persistence, simplified OCR and the new traditional OCR reassembly test |
+| Traditional cache | Test asserts 27,120,340 bytes at `./chi_tra.traineddata` after OCR |
+| Strict 500 WPM | **120.0 ms/token** over 16 intervals |
+| Archive limit | No entry over 25 MiB; max 20,159,757 bytes |
+| Live anonymous access | **401**; private gate intact |
+| Live authenticated access | **200** with `OAI-Sites-Authorization`; new bundle referenced; manifest `application/json`; part1 `application/octet-stream`, 13,560,170 bytes; bundle `text/javascript` |
+| Deployment status | `succeeded`, production URL returned, no failure message |
 
-An earlier Linux Chromium run (59 unit / 21 browser) remains historical evidence
-for the Chinese release; the Windows Edge numbers above supersede it.
+The traditional OCR test generates an image under `test-results/`, selects
+`eng+chi_tra`, prepares the reading, verifies extracted text contains 中文, and
+checks the cache byte length. Generated PDF fixtures were restored afterwards.
 
 ## Run it locally
 
@@ -99,29 +118,15 @@ pnpm dev                          # http://127.0.0.1:5173
 ```
 
 `pnpm test`, `pnpm build` and `pnpm test:e2e` run the unit suite, the strict
-typecheck plus production build, and the Edge browser suite. The browser suite
-needs Microsoft Edge installed. Full user instructions are in
-[speedread-app/README.md](speedread-app/README.md).
-
-## Hosting status
-
-The app targets ChatGPT Sites: `speedread-app/.openai/hosting.json` points at
-project `appgprj_6ae4f4222af08191898caecebe55bbb9`; the Site is private at
-`https://speedread.ericxyuan.chatgpt.site` behind a 401 sign-in gate.
-
-**Publication of this hardened build is still outstanding.** The last confirmed
-deployment is version 1, the pre-Chinese build. The refreshed source and the
-archive above are staged in git-ignored `.sites-runtime/`. Publication requires
-the ChatGPT Sites connector: Freebuff has no connector for it, and deploying to
-Freebuff Sites would change the URL and break the existing private audience and
-library data. Codex's account usage limit resets at 31 October 2026, 00:45, after
-which the handoff prompt in `RESUME_SPEEDREAD.md` completes the publish and
-records the source commit, version and deployment IDs.
+typecheck plus production build (including the OCR split), and the Edge browser
+suite. The browser suite needs Microsoft Edge installed. Full user instructions
+are in [speedread-app/README.md](speedread-app/README.md).
 
 ## Not verified
 
-- The live deployment itself. The 401 gate prevents reading the served bundle,
-  so "hosted and private" is verified, but which version it serves is not.
+- Interactive OCR over the public network. The live Site is owner-private; the
+  HTML, JS, manifest and first model part were verified over authenticated HTTP,
+  while the identical production build passed all 23 browser tests locally.
 - Real iOS/Android hardware, screen readers and browsers other than Edge and
   Chromium.
 - Universal polyphone, name and dialect accuracy. The lexicon is curated, not

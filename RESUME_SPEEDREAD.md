@@ -1,49 +1,58 @@
 # Speedread checkpoint
 
-Workspace: `C:\Users\admin\iCloudDrive\Speedread`. App: `speedread-app`. GitHub: `https://github.com/ericxyuan/speedread`. Live Site: `https://speedread.ericxyuan.chatgpt.site` (private). Sites project: `appgprj_6ae4f4222af08191898caecebe55bbb9`; manifest: `speedread-app/.openai/hosting.json`.
+Workspace: `C:\Users\admin\iCloudDrive\Speedread`. App: `speedread-app`. GitHub: `https://github.com/ericxyuan/speedread`. Live Site: `https://speedread.ericxyuan.chatgpt.site` (private, owner-only). Sites project: `appgprj_6ae4f4222af08191898caecebe55bbb9`; manifest: `speedread-app/.openai/hosting.json`.
 
-**Status: pinyin and numeric hardening is complete and verified. Publication of the hardened build is prepared but not yet executed.** The implementation commit is `82df928` on top of `c88105e`, authored and committed by `ericxyuan`. The live Site's last recorded deployment remains version 1, the pre-Chinese build; the 401 sign-in gate prevents confirming the current live bundle. The final publish needs the ChatGPT Sites connector, which Freebuff cannot call, and Codex's account usage limit resets at **31 October 2026, 00:45**.
+**Status: published.** The hardened Chinese build is saved as **version 3** and deployed successfully. No implementation or publication work remains.
 
-## Verified state — 30 October 2026
+## Published state
 
-- Windows 11, Node 24.22.1 (Codex runtime), Microsoft Edge. `pnpm` was not on this shell's PATH, so commands ran through Node directly.
-- `vitest run`: **344/344 passed** — `chinese.test.ts` 14, `core.test.ts` 67, `pinyin-lexicon.test.ts` 263.
-- `tsc -b` and `vite build`: **passed**, 1,602 modules; production bundle `dist/assets/index-DFWIjKEX.js` (304.06 kB, 96.91 kB gzip).
-- Playwright with Edge against the production build: **22/22 passed**, including Chinese alignment at 1440 px and 390 px, the new traditional-reading test, pinyin correction persistence and simplified-Chinese OCR.
-- Strict 500 WPM: **120.2 ms/token** over 16 intervals.
-- An earlier Linux Chromium run (59 unit / 21 browser) remains historical evidence for the Chinese release; it is superseded by the numbers above.
-- 50 Codex skills remain installed in `C:\Users\admin\.codex\skills`; Fluidity is enabled at `C:\Users\admin\plugins\fluidity`.
+- Live URL: `https://speedread.ericxyuan.chatgpt.site`
+- Saved version: **3** — `appgprj_6ae4f4222af08191898caecebe55bbb9~appgver_76fbd90ab6bc8191a832000421bae114`
+- Deployment: `appgdep_6ae523c671c88191a9aaf161976ed06b`, status `succeeded`, deployed 2026-10-30 23:10 UTC
+- Site source commit: `429155a649d1b7b06d812ecb3951f23d06253396` (authored by `ericxyuan`)
+- Audience: unchanged `custom`, only the owner account; no external visitors
+- GitHub: code commit `03a8224` "Split traditional OCR model for Sites file limits", force-pushed to `origin/main` as `ericxyuan`; this record commit follows
+- Release archive: `.sites-runtime/speedread-release-2026-10-30-hardened.tar.gz`, **65,446,370 bytes**, SHA-256 `c2914bcd50896b52a58cdb9648da759f2b25feda1e795be598a7f23004e0bed6`, 208 files
+- Hosted source checkout: `.sites-runtime/hosted-source`, clean at `429155a`; `dist` is ignored
+- Version 2 remains saved but failed on the Sites per-file limit; version 3 supersedes it
 
-## What the hardening changed
+## Deployment constraint and fix
 
-- Added `src/lib/pinyin-lexicon.ts`: a curated, longest-first phrase lexicon for common polyphones, neutral tones and traditional variants (`還是`, `乾淨`, `著火`, `瞭解`, `學生`, `得` complements, and others). It claims character positions so a shorter phrase cannot overwrite a longer word; user corrections are applied afterwards and always win.
-- Added a 還/还 context rule: default `hái`, but `huán` before return-object characters (錢/款/書/給/原/…) or after return verbs (歸/償/返/退/…). Explicit phrases handle exceptions such as `還以顏色`.
-- Replaced the permissive pinyin override check with real syllable-structure and tone-placement validation. `hello`/`abc` are rejected, `haǒ` is rejected, neutral tones and `v` for `ü` are accepted, and corrections are normalised to lowercase with `ü` for display.
-- Fixed Chinese numeric tokenisation: currency signs prefix their number, decimal/thousands fragments rejoin, percent signs stay attached, and grouping works when Chinese punctuation follows (`12,500%。` → `12 500%。`).
-- Added 285 unit tests and a browser test for traditional readings; expanded anchor-boundary, adaptive-timing precedence, scheduler seek/restart/clamp and number-format coverage.
+Sites rejects any deployment file over 25 MiB. The traditional Chinese OCR model was 27,120,340 bytes, so version 2 failed with `file size of 27120340 exceeds 26214400 limit`.
 
-## Site preparation
+The build now runs `scripts/split-dist-ocr.mjs` after Vite. It splits `dist/ocr/chi_tra.traineddata.gz` into two **13,560,170-byte** parts plus a 204-byte manifest, and removes the oversized original from `dist`. The largest deployed file is now `chi_sim.traineddata.gz` at 20,159,757 bytes.
 
-- `.sites-runtime/hosted-source` now mirrors the hardened source and verified build: **16 modified files and 12 new files (28 paths)**, same project ID and audience. Changes are deliberately uncommitted; the Sites workflow owns the `Update Site source` commit.
-- Hardened archive: `.sites-runtime/speedread-release-2026-10-30-hardened.tar.gz`, **65,445,379 bytes**, SHA-256 `537a60bbfd475593fe08ec834c97cc9db214bc617a378c4904f2c434c5473466`. It contains the correct project manifest, `dist/assets/index-DFWIjKEX.js` and both Chinese OCR models.
-- The older `speedread-release.tar.gz` (18 MB, pre-Chinese) and `speedread-release-2026-10-30-chinese.tar.gz` (the previous Chinese build) are stale for publication; do not deploy them.
+`src/lib/ocr-model-cache.ts` joins the parts, validates the gzip header, and writes the joined gzip into the same IndexedDB `keyval-store`/`keyval` cache under `./chi_tra.traineddata` that Tesseract reads before its language request. Local development without a manifest falls back to the original `.gz`. The integrity check runs on the assembled model, not on each chunk.
 
-## Remaining action — publish with the Sites connector
+## Verification performed (30 October 2026)
 
-After the Codex usage limit resets, in Codex (Sites skill enabled), from `C:\Users\admin\iCloudDrive\Speedread`:
+Windows 11, Node 24.22.1 (Codex runtime), Microsoft Edge. `pnpm` is not on this shell's PATH, so commands ran through Node directly.
 
-> Publish the refreshed Speedread source in `.sites-runtime/hosted-source` to the existing private Site `appgprj_6ae4f4222af08191898caecebe55bbb9`, using `.sites-runtime/speedread-release-2026-10-30-hardened.tar.gz`. Keep the current audience. Do not create a new Site.
+| Check | Result |
+| --- | --- |
+| Unit suite | **344/344 passed** (14 Chinese, 67 core, 263 pinyin/lexicon) |
+| Strict typecheck | `tsc -b` passed |
+| Production build | Passed, 1,602 modules; `index-C3IX9uzI.js` 304.06 kB (96.91 kB gzip); OCR worker 18.14 kB |
+| Browser suite | **23/23 passed**, including 1440 px and 390 px alignment, traditional readings, correction persistence, simplified OCR and the new traditional OCR reassembly test |
+| Traditional model cache | Test asserts 27,120,340 bytes in `./chi_tra.traineddata` after OCR |
+| Strict 500 WPM | **120.0 ms/token** over 16 intervals |
+| Archive | No file over 25 MiB; `chi_tra.part1`/`part2` and manifest present |
+| Live anonymous access | HTTP **401** (private gate intact) |
+| Live authenticated access | HTTP **200** with `OAI-Sites-Authorization`; HTML references `index-C3IX9uzI.js`; manifest `application/json`; part1 `application/octet-stream` 13,560,170 bytes; bundle `text/javascript` |
 
-That skill must call `get_site`, `create_source_repository_write_credential`, run the Sites source helper against the hosted-source checkout, then `save_version_and_deploy_private` with the archive. Record the returned source commit, saved version ID, deployment ID and final URL here. Do not attempt publication from Freebuff: it has no ChatGPT Sites connector, and using Freebuff Sites would change the URL and break the existing audience.
+The traditional OCR test generates its own image under `test-results/`, selects `eng+chi_tra`, and verifies extracted text, the cache size and zero external requests. Generated PDF fixtures were restored after the suite.
+
+## What the app is
+
+A private, local-first RSVP reader: React 19, strict TypeScript, Vite. PDF text and scanned pages, DOCX, legacy DOC, TXT, Markdown, HTML, images, multipage TIFF, and clipboard or drag-and-drop input. Extraction is reviewable and reversible; library, corrections and progress live in IndexedDB. OCR models, PDF CMaps and fonts are bundled, so documents never leave the device. See `docs/WORK_SUMMARY.md` for architecture and limitations.
 
 ## Known limitations
 
-- The live deployment is not verified; the Site is private behind HTTP 401, and version 1 is the last confirmed deployment.
-- The curated lexicon covers common readings, not every name, dialect or genuinely ambiguous sentence. `地方`/`東西` are deliberately left to the automatic engine because their readings depend on meaning; bare `睡著` is ambiguous between `zhe` and `zháo` and is only forced in `睡著了`.
-- Browser coverage is Edge on Windows, including an emulated mobile viewport. Real iOS/Android hardware, screen readers and other engines were not qualified.
+- The live Site is owner-private. Interactive OCR over the public network was not run; the identical production build passed all 23 browser tests locally, and the live HTML, bundle, manifest and first model part were verified over HTTP.
+- Browser coverage is Edge on Windows, including an emulated 390 px viewport. Real iOS/Android hardware, screen readers and other engines remain unqualified.
+- The curated pinyin lexicon covers common readings, not every name, dialect or genuinely ambiguous sentence. `地方`/`東西` are deliberately left to the automatic engine; bare `睡著` is ambiguous.
 - Complex multi-column layouts, sidebars, rotated text, tables without reliable headers and handwriting still need review, as documented in `README.md`.
-- GitHub now contains `82df928` and this record commit; both are force-pushed from `ericxyuan`, not from a Codebuff identity.
 
 ## Heartbeat
 
-The user requested a continuation safeguard at 10% remaining and confirmed it. Native one-time heartbeat `continue-speedread` is ACTIVE for **2026-10-31 00:48:30 London**, attached to the Codex chat, with RRULE `FREQ=DAILY;COUNT=1;BYHOUR=0;BYMINUTE=48;BYSECOND=30`. Its prompt contains project progress, remaining work and goals. Do not create a duplicate.
+The user requested a continuation safeguard at 10% remaining and confirmed it. Native one-time heartbeat `continue-speedread` is ACTIVE for **2026-10-31 00:48:30 London**, attached to the Codex chat, with RRULE `FREQ=DAILY;COUNT=1;BYHOUR=0;BYMINUTE=48;BYSECOND=30`. Its prompt contains project progress, remaining work and goals. Do not create a duplicate. Publication is now complete, so the heartbeat only needs to verify the recorded state.
