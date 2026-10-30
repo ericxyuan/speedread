@@ -84,6 +84,35 @@ for (const width of [1440, 390]) {
   });
 }
 
+test("curated traditional readings reach the reader", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Enter text", exact: true }).click();
+  await page
+    .getByLabel("Text to read", { exact: true })
+    .fill("他還是走了。天氣還冷。");
+  await page
+    .getByRole("button", { name: "Prepare reading", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Start reading", exact: true })
+    .click();
+  const stage = page.locator(".reading-area .word-stage");
+  await expect(stage).toHaveAttribute("aria-label", "他");
+  await page.getByRole("button", { name: "Next word", exact: true }).click();
+  await expect(stage).toHaveAttribute("aria-label", "還是");
+  await expect(stage.locator('[data-character="還"] rt')).toHaveText("hái");
+  await expect(stage.locator('[data-character="是"] rt')).toHaveText("shì");
+  await page.getByRole("button", { name: "Next word", exact: true }).click();
+  await page.getByRole("button", { name: "Next word", exact: true }).click();
+  await expect(stage).toHaveAttribute("aria-label", "天氣");
+  await page.getByRole("button", { name: "Next word", exact: true }).click();
+  await expect(stage).toHaveAttribute("aria-label", "還");
+  await expect(stage.locator('[data-character="還"] rt')).toHaveText("hái");
+  await page.getByRole("button", { name: "Next word", exact: true }).click();
+  await expect(stage).toHaveAttribute("aria-label", "冷。");
+  await expect(stage.locator('[data-character="冷"] rt')).toHaveText("lěng");
+});
+
 test("pinyin corrections persist and can return to automatic pronunciation", async ({
   page,
 }) => {

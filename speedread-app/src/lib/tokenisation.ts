@@ -16,7 +16,7 @@ export function formatNumeric(text: string, locale = "en-GB") {
   if (decimalCommaCache.get(locale)) return text;
   // Only comma groups with exactly three digits, in an otherwise numerical token.
   if (
-    !/^[\p{Sc}−+\-]?(?:\d{1,3}(?:,\d{3})+)(?:\.\d+)?(?:%|[.,;:!?])?$/u.test(
+    !/^[\p{Sc}−+\-]?(?:\d{1,3}(?:,\d{3})+)(?:\.\d+)?(?:[%‰][.,;:!?。，；：！？]?|[.,;:!?。，；：！？])?$/u.test(
       text,
     )
   )
@@ -50,7 +50,19 @@ export function tokenize(blocks: Block[], locale = "en-GB"): Token[] {
       for (let i = 0; i < parts.length; i++) {
         const originalPart = i;
         let raw = parts[i];
+        // A currency sign separated from its number still belongs to it.
+        if (
+          /^\p{Sc}$/u.test(raw) &&
+          /^[\p{Sc}−+\-]?\d/u.test(parts[i + 1] ?? "")
+        )
+          raw += parts[++i];
         if (/^[\p{Sc}−+\-]?\d/u.test(raw)) {
+          // Rejoin decimal and thousands fragments from the word segmenter.
+          while (
+            /^[.,]$/u.test(parts[i + 1] ?? "") &&
+            /^\d+$/u.test(parts[i + 2] ?? "")
+          )
+            raw += parts[++i] + parts[++i];
           while (
             /^\d{1,3}(?:\u00a0\d{3})*$/.test(
               raw.replace(/^[\p{Sc}−+\-]/u, ""),
@@ -64,6 +76,7 @@ export function tokenize(blocks: Block[], locale = "en-GB"): Token[] {
             unit.test(parts[i + 1] ?? "")
           )
             raw += "\u00a0" + parts[++i];
+          if (/^[%‰]$/u.test(parts[i + 1] ?? "")) raw += parts[++i];
           if (
             (parts[i + 1] === "×" || parts[i + 1] === "x") &&
             /^10(?:[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+|\^[−+\-]?\d+)$/.test(parts[i + 2] ?? "")

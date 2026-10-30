@@ -36,6 +36,18 @@ describe("tokenisation", () => {
     ["“reading", 3],
     ["éclair", 2],
   ])("anchors %s at %i", (s, n) => expect(anchorIndex(s)).toBe(n));
+  it.each([
+    [1, 0],
+    [2, 1],
+    [5, 1],
+    [6, 2],
+    [9, 2],
+    [10, 3],
+    [13, 3],
+    [14, 4],
+  ])("honours the anchor boundary at %i characters", (length, index) =>
+    expect(anchorIndex("a".repeat(length))).toBe(index),
+  );
   it("keeps Unicode, apostrophes and hyphens", () =>
     expect(
       tokenize([block("L’été isn't a state-of-the-art café.")]).map(
@@ -51,6 +63,11 @@ describe("tokenisation", () => {
     ["2026-10-30", "2026-10-30"],
     ["1.2.3", "1.2.3"],
     ["192.168.1.1", "192.168.1.1"],
+    ["−1,250", "−1 250"],
+    ["+1,250", "+1 250"],
+    ["1,234,567.89", "1 234 567.89"],
+    ["12,34,567", "12,34,567"],
+    ["1,000%", "1 000%"],
   ])("formats %s without changing value", (input, output) =>
     expect(formatNumeric(input)).toBe(output),
   );
@@ -79,6 +96,15 @@ describe("tokenisation", () => {
     expect(effectiveWpm(t, 250, false)).toBe(250);
     expect(effectiveWpm(t, 250, true)).toBe(147);
   });
+  it.each([
+    ["word, next", 1.15],
+    ["word; next", 1.3],
+    ["word. Next", 1.5],
+    ["Extraordinarilylongnumericalword next", 1.4],
+    ["Extraordinarilylongnumericalword; next", 1.4],
+  ])("uses one capped multiplier for %s", (text, expected) =>
+    expect(tokenize([block(text)])[0].multiplier).toBe(expected),
+  );
   it("keeps combined source order and IDs", () => {
     const t = tokenize([
       block("Second", { id: "two" }),
@@ -249,6 +275,38 @@ describe("monotonic playback scheduler", () => {
     expect(e.snapshot().index).toBe(1);
     e.destroy();
   });
+  it("preserves the remaining fraction when speed changes while paused", () => {
+    const e = setup();
+    e.play();
+    vi.advanceTimersByTime(100);
+    e.pause();
+    e.configure(500, false);
+    e.play();
+    vi.advanceTimersByTime(69);
+    expect(e.snapshot().index).toBe(0);
+    vi.advanceTimersByTime(1);
+    expect(e.snapshot().index).toBe(1);
+    e.destroy();
+  });
+  it("clamps the configured WPM", () => {
+    const e = setup();
+    e.configure(50, false);
+    expect(e.duration()).toBe(600);
+    e.configure(5000, false);
+    expect(e.duration()).toBe(30);
+    e.destroy();
+  });
+  it("restarts the deadline after seeking during playback", () => {
+    const e = setup();
+    e.play();
+    vi.advanceTimersByTime(100);
+    e.seek(100);
+    vi.advanceTimersByTime(239);
+    expect(e.snapshot().index).toBe(100);
+    vi.advanceTimersByTime(1);
+    expect(e.snapshot().index).toBe(101);
+    e.destroy();
+  });
   it("visits every token once without accumulating drift", () => {
     const e = setup();
     const seen: number[] = [];
@@ -270,6 +328,21 @@ describe("monotonic playback scheduler", () => {
     expect(e.snapshot().index).toBe(10);
     e.seek(-100);
     expect(e.snapshot().index).toBe(0);
+    e.destroy();
+  });
+  it("restarts from the first token after completion", () => {
+    vi.useFakeTimers({ toFake: ["performance", "setTimeout", "clearTimeout"] });
+    const e = new PlaybackEngine(tokens().slice(0, 2));
+    e.configure(250, false);
+    e.play();
+    vi.advanceTimersByTime(480);
+    expect(e.snapshot().ended).toBe(true);
+    e.play();
+    expect(e.snapshot()).toMatchObject({
+      index: 0,
+      playing: true,
+      ended: false,
+    });
     e.destroy();
   });
   it("completes only after displaying the final token", () => {
