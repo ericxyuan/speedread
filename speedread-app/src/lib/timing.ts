@@ -1,3 +1,4 @@
+import { MAX_WPM, MIN_WPM } from "../types";
 import type { Token } from "../types";
 export interface Clock {
   now: () => number;
@@ -114,7 +115,7 @@ export class PlaybackEngine {
       : this.remaining
         ? this.remaining / old
         : 1;
-    this.wpm = Math.max(100, Math.min(2000, wpm));
+    this.wpm = Math.max(MIN_WPM, Math.min(MAX_WPM, wpm));
     this.adaptive = adaptive;
     this.remaining = this.duration() * fraction;
     if (this.state.playing) {

@@ -93,6 +93,8 @@ test("speed presets, strict timing, transcript and fullscreen", async ({
   page,
 }) => {
   await sample(page);
+  await page.getByRole("button", { name: "Hyper", exact: true }).click();
+  await expect(page.getByLabel("Reader words per minute")).toHaveValue("1000");
   await page.getByRole("button", { name: "Extreme", exact: true }).click();
   await expect(page.getByLabel("Reader words per minute")).toHaveValue("750");
   await expect(
@@ -522,7 +524,11 @@ test("source PDF rendering and direct numeric speed entry", async ({
   await page.getByLabel("Words per minute", { exact: true }).press("Tab");
   await expect(
     page.getByLabel("Words per minute", { exact: true }),
-  ).toHaveValue("1240");
+  ).toHaveValue("1000");
+  await expect(page.getByLabel("Reading speed", { exact: true })).toHaveAttribute(
+    "max",
+    "1000",
+  );
 });
 
 test("simple PDF tables retain labels, values and original rows", async ({
@@ -550,4 +556,26 @@ test("simple PDF tables retain labels, values and original rows", async ({
       { exact: true },
     ),
   ).toBeVisible();
+});
+
+test("reading pace sits beside the import card at desktop width", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const rail = page.locator(".home-lower");
+  const card = page.locator(".import-card");
+  await expect(rail).toBeVisible();
+  await expect(
+    page.getByLabel("Reading speed", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Words per minute", { exact: true }),
+  ).toHaveAttribute("max", "1000");
+  const railBox = await rail.boundingBox();
+  const cardBox = await card.boundingBox();
+  expect(railBox).not.toBeNull();
+  expect(cardBox).not.toBeNull();
+  expect(railBox!.x).toBeGreaterThan(cardBox!.x + cardBox!.width);
+  expect(railBox!.y + railBox!.height).toBeLessThanOrEqual(900);
 });

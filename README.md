@@ -39,7 +39,7 @@ With npm, substitute `npm install`, `npm run dev`, `npm test`, and `npm run buil
 - Text and image clipboard input, permission-denied fallback, drop anywhere, multiple files, individual processing, reordering, and combined sessions.
 - Conservative, balanced and aggressive filtering. Excluded blocks, reasons, originals, source IDs, page numbers, bounds and OCR confidence remain available. Restore, edit, reprocess, download originals or export cleaned text.
 - PDF page and image preview. A PDF source block is outlined on the original page when bounds are available.
-- Six named speed presets and custom 100–2000 WPM, strict or adaptive pacing, nominal and estimated effective WPM, pause/resume, word/five-word/sentence seeking, timeline, fullscreen and automatic hidden-tab pause.
+- Six named speed presets and custom 100–1000 WPM, strict or adaptive pacing, nominal and estimated effective WPM, pause/resume, word/five-word/sentence seeking, timeline, fullscreen and automatic hidden-tab pause.
 - Fixed anchor coordinate with variable-width glyph layout and long-token scaling. Instant word replacement, restrained speed-colour interpolation, adjustable typography, guides, glow, anchor colour, number notation and reduced-motion support.
 - Chinese whole-word segmentation (for example, 可以 remains one displayed word), phrase-context pinyin and a separate annotation cell above each Han character. Simplified and traditional text retain their original characters. Pinyin can be hidden or corrected per source block, and corrections are saved with the reading.
 - Searchable, bounded transcript windows (120 tokens), section navigation, reader/transcript/split views, touch swipes, keyboard controls and focused-control visibility.

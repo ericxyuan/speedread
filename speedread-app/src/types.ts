@@ -1,3 +1,5 @@
+export const MIN_WPM = 100;
+export const MAX_WPM = 1000;
 export type FilterMode = "conservative" | "balanced" | "aggressive";
 export type BlockType =
   | "paragraph"

@@ -1,6 +1,6 @@
 import { SpeedInput } from "./SpeedInput";
 import { Minus, Plus } from "lucide-react";
-import { presets } from "../types";
+import { MAX_WPM, MIN_WPM, presets } from "../types";
 export function SpeedControl({
   wpm,
   onChange,
@@ -11,7 +11,7 @@ export function SpeedControl({
   compact?: boolean;
 }) {
   const set = (n: number) =>
-    onChange(Math.max(100, Math.min(2000, Math.round(n / 10) * 10)));
+    onChange(Math.max(MIN_WPM, Math.min(MAX_WPM, Math.round(n / 10) * 10)));
   return (
     <div className={`speed-control ${compact ? "compact" : ""}`}>
       <div className="speed-heading">
@@ -31,8 +31,8 @@ export function SpeedControl({
         className="range"
         aria-label="Reading speed"
         type="range"
-        min="100"
-        max="2000"
+        min={MIN_WPM}
+        max={MAX_WPM}
         step="10"
         value={wpm}
         onChange={(e) => set(Number(e.target.value))}

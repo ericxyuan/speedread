@@ -288,12 +288,14 @@ describe("monotonic playback scheduler", () => {
     expect(e.snapshot().index).toBe(1);
     e.destroy();
   });
-  it("clamps the configured WPM", () => {
+  it("clamps the configured WPM to the 100–1000 range", () => {
     const e = setup();
     e.configure(50, false);
     expect(e.duration()).toBe(600);
     e.configure(5000, false);
-    expect(e.duration()).toBe(30);
+    expect(e.duration()).toBe(60);
+    e.configure(1000, false);
+    expect(e.duration()).toBe(60);
     e.destroy();
   });
   it("restarts the deadline after seeking during playback", () => {

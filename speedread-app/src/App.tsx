@@ -32,7 +32,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import type { Block, ReadingDocument, Preferences, FilterMode } from "./types";
-import { defaults, speedColor } from "./types";
+import { defaults, MAX_WPM, MIN_WPM, speedColor } from "./types";
 import {
   allDocuments,
   saveDocument,
@@ -50,10 +50,15 @@ import { Modal } from "./components/Modal";
 const sample = `The art of paying attention\n\nThere is a particular kind of quiet that arrives when you give one thing your full attention. The distractions do not disappear. You simply stop following them.\n\nReading offers a small practice in that kind of focus. One sentence leads to another. An unfamiliar idea becomes a question, and the question invites you to look a little closer. The aim is not to reach the last page as quickly as possible. It is to arrive with something worth keeping.\n\nFinding your pace\n\nTry a comfortable speed first. Pause whenever you need to, or move back a sentence to revisit an idea. A faster pace can help you scan familiar material, but understanding still takes time.\n\nNumbers deserve attention too. A distance of 12,500 km is different from 12.5 km. A cost of £1,250.50 should retain its exact meaning. Good reading tools preserve those details.\n\nMake room for the words. Let the next one come to you.`;
 function loadPrefs() {
   try {
-    return {
+    const saved = {
       ...defaults,
       ...JSON.parse(localStorage.getItem("speedread-preferences") || "{}"),
     } as Preferences;
+    const wpm = Number.isFinite(saved.wpm) ? saved.wpm : defaults.wpm;
+    return {
+      ...saved,
+      wpm: Math.max(MIN_WPM, Math.min(MAX_WPM, Math.round(wpm / 10) * 10)),
+    };
   } catch {
     return defaults;
   }

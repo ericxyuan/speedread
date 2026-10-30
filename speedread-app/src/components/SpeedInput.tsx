@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { MAX_WPM, MIN_WPM } from "../types";
 export function SpeedInput({
   wpm,
   onChange,
@@ -17,9 +18,9 @@ export function SpeedInput({
     focused.current = false;
     const value = Number(draft);
     const next = Math.max(
-      100,
+      MIN_WPM,
       Math.min(
-        2000,
+        MAX_WPM,
         Math.round((Number.isFinite(value) && value ? value : wpm) / 10) * 10,
       ),
     );
@@ -31,8 +32,8 @@ export function SpeedInput({
       aria-label={label}
       type="number"
       inputMode="numeric"
-      min="100"
-      max="2000"
+      min={MIN_WPM}
+      max={MAX_WPM}
       step="10"
       value={draft}
       onFocus={() => {
@@ -41,7 +42,8 @@ export function SpeedInput({
       onChange={(e) => {
         setDraft(e.target.value);
         const value = Number(e.target.value);
-        if (value >= 100 && value <= 2000 && value % 10 === 0) onChange(value);
+        if (value >= MIN_WPM && value <= MAX_WPM && value % 10 === 0)
+          onChange(value);
       }}
       onBlur={commit}
       onKeyDown={(e) => {

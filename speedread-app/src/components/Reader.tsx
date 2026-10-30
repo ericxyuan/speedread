@@ -28,6 +28,7 @@ import {
   X,
   Search,
 } from "lucide-react";
+import { MAX_WPM, MIN_WPM } from "../types";
 import type { ReadingDocument, Preferences } from "../types";
 import { PlaybackEngine } from "../lib/timing";
 import { anchorIndex, effectiveWpm } from "../lib/reading-metrics";
@@ -245,10 +246,10 @@ export default function Reader({
             : engine.seek(engine.snapshot().index + 1);
           break;
         case "ArrowUp":
-          setPrefs({ ...prefs, wpm: Math.min(2000, prefs.wpm + 10) });
+          setPrefs({ ...prefs, wpm: Math.min(MAX_WPM, prefs.wpm + 10) });
           break;
         case "ArrowDown":
-          setPrefs({ ...prefs, wpm: Math.max(100, prefs.wpm - 10) });
+          setPrefs({ ...prefs, wpm: Math.max(MIN_WPM, prefs.wpm - 10) });
           break;
         case "r":
         case "R":
