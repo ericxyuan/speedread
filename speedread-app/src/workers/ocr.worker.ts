@@ -1,5 +1,6 @@
 import { createWorker, PSM } from "tesseract.js";
 import type { Worker as TesseractWorker } from "tesseract.js";
+import { ensureTraditionalOcrModel } from "../lib/ocr-model-cache";
 let currentPage = 1;
 let engine: TesseractWorker | null = null;
 self.onmessage = async (
@@ -9,7 +10,9 @@ self.onmessage = async (
   try {
     if (!engine) {
       const root = new URL("/ocr/", self.location.origin).href;
-      engine = await createWorker(e.data.language.split("+"), 1, {
+      const languages = e.data.language.split("+");
+      if (languages.includes("chi_tra")) await ensureTraditionalOcrModel();
+      engine = await createWorker(languages, 1, {
         workerPath: new URL("worker.min.js", root).href,
         corePath: root,
         langPath: root,

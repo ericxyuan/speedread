@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 for (const width of [1440, 390]) {
   test(`Chinese words and character-centred pinyin at ${width}px`, async ({
@@ -148,6 +148,80 @@ test("pinyin corrections persist and can return to automatic pronunciation", asy
     .getByRole("button", { name: "Use automatic pinyin", exact: true })
     .click();
   await expect(edit).toHaveValue(original);
+});
+
+test("traditional Chinese OCR reassembles split local models", async ({
+  page,
+}) => {
+  const external: string[] = [];
+  page.on("request", (request) => {
+    if (
+      !request.url().startsWith("http://127.0.0.1:") &&
+      !request.url().startsWith("data:") &&
+      !request.url().startsWith("blob:")
+    )
+      external.push(request.url());
+  });
+  await page.goto("/");
+  const data = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 240;
+    const context = canvas.getContext("2d")!;
+    context.fillStyle = "white";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "black";
+    context.font = '52px "Microsoft YaHei"';
+    context.fillText("我們一起閱讀中文。", 50, 120);
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+  mkdirSync("test-results", { recursive: true });
+  const fixture = "test-results/chinese-traditional.png";
+  writeFileSync(fixture, Buffer.from(data, "base64"));
+  await page
+    .getByRole("button", { name: "Reading preferences", exact: true })
+    .click();
+  await page
+    .getByLabel("OCR language", { exact: true })
+    .selectOption("eng+chi_tra");
+  await page.getByRole("button", { name: "Close dialog", exact: true }).click();
+  await page
+    .getByLabel("Upload files", { exact: true })
+    .setInputFiles(fixture);
+  await page
+    .getByRole("button", { name: "Prepare reading", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Start reading", exact: true }),
+  ).toBeVisible({ timeout: 120000 });
+  const text = await page
+    .locator(".text-block textarea")
+    .evaluateAll((els) =>
+      els.map((el) => (el as HTMLTextAreaElement).value).join(""),
+    );
+  expect(text.replace(/\s/g, "")).toContain("中文");
+  const cachedBytes = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        const request = indexedDB.open("keyval-store");
+        request.onerror = () => resolve(-1);
+        request.onsuccess = () => {
+          const db = request.result;
+          const read = db
+            .transaction("keyval", "readonly")
+            .objectStore("keyval")
+            .get("./chi_tra.traineddata");
+          read.onerror = () => resolve(-1);
+          read.onsuccess = () => {
+            const value = read.result as Uint8Array | undefined;
+            db.close();
+            resolve(value?.byteLength ?? 0);
+          };
+        };
+      }),
+  );
+  expect(cachedBytes).toBe(27120340);
+  expect(external).toEqual([]);
 });
 
 test("simplified Chinese OCR uses local models and preserves words", async ({
