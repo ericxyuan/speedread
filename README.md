@@ -51,7 +51,7 @@ With npm, substitute `npm install`, `npm run dev`, `npm test`, and `npm run buil
 
 Filtering, tokenisation, geometric layout, resource checks, timing and persistence are independent modules. Blocks retain stable source identity. Tokens keep paragraph/sentence IDs and source-block links. The reader subscribes directly to a deterministic engine, so token updates do not rerender the upload/library application.
 
-The timing engine uses `performance.now()` and deadline-based timeouts. Small timer jitter is compensated; stalls reset the next deadline. It advances exactly one token per tick and never flashes missed words to catch up. Adaptive multipliers use precedence and a 1.7 maximum, rather than multiplying pauses together. Long sessions may run slower when a device cannot sustain the requested timing; words are retained.
+The timing engine uses `performance.now()` and deadline-based timeouts. Small timer jitter is compensated; stalls reset the next deadline. It advances exactly one token per tick and never flashes missed words to catch up. Display time does not depend on word length: regular timing gives every token the same interval, and optional adaptive timing only adds a bounded pause at punctuation or a paragraph end. Long sessions may run slower when a device cannot sustain the requested timing; words are retained.
 
 ## Privacy and practical limits
 

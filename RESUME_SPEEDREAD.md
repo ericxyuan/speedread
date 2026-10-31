@@ -2,54 +2,51 @@
 
 Workspace: `C:\Users\admin\iCloudDrive\Speedread`. App: `speedread-app`. GitHub: `https://github.com/ericxyuan/speedread`. Live Site: `https://speedread.ericxyuan.chatgpt.site` (private, owner-only). Sites project: `appgprj_6ae4f4222af08191898caecebe55bbb9`; manifest: `speedread-app/.openai/hosting.json`.
 
-**Status: published.** The hardened Chinese build is saved as **version 3** and deployed successfully. No implementation or publication work remains.
+**Status: published.** The regular-pacing build is saved as **version 5** and deployed successfully. No implementation or publication work remains.
 
 ## Published state
 
 - Live URL: `https://speedread.ericxyuan.chatgpt.site`
-- Saved version: **3** — `appgprj_6ae4f4222af08191898caecebe55bbb9~appgver_76fbd90ab6bc8191a832000421bae114`
-- Deployment: `appgdep_6ae523c671c88191a9aaf161976ed06b`, status `succeeded`, deployed 2026-10-30 23:10 UTC
-- Site source commit: `429155a649d1b7b06d812ecb3951f23d06253396` (authored by `ericxyuan`)
+- Saved version: **5** — `appgprj_6ae4f4222af08191898caecebe55bbb9~appgver_e1cdddcf5b448191be25c688c5f5aca2`
+- Deployment: `appgdep_6ae53189c9dc819185c18e3dfcb8e10d`, status `succeeded`, deployed 2026-10-31 00:08:54 UTC
+- Site source commit: `0a777110763dcf3afe1e951bd520c09851185206` (authored by `ericxyuan`)
+- GitHub code commit: `92dd937` "Keep RSVP pacing independent of word length", force-pushed to `origin/main` as `ericxyuan`
 - Audience: unchanged `custom`, only the owner account; no external visitors
-- GitHub: code commit `03a8224` "Split traditional OCR model for Sites file limits", force-pushed to `origin/main` as `ericxyuan`; this record commit follows
-- Release archive: `.sites-runtime/speedread-release-2026-10-30-hardened.tar.gz`, **65,446,370 bytes**, SHA-256 `c2914bcd50896b52a58cdb9648da759f2b25feda1e795be598a7f23004e0bed6`, 208 files
-- Hosted source checkout: `.sites-runtime/hosted-source`, clean at `429155a`; `dist` is ignored
-- Version 2 remains saved but failed on the Sites per-file limit; version 3 supersedes it
+- Release archive: `.sites-runtime/speedread-release-2026-10-30-regular-timing-site.tar.gz`, **65,446,448 bytes**, SHA-256 `3f82e35f1b5e12e3f10273f77363ea3abe78142aa1472a74e220f37b66b9a0a4`, 208 files, largest 20,159,757 bytes
+- Hosted source checkout: `.sites-runtime/hosted-source`, clean at `0a77711`; `dist` is ignored
+- Version 4 (side controls) and version 5 (regular pacing) supersede version 3; versions 2 and 3 remain saved
 
-## Deployment constraint and fix
+## Timing change
 
-Sites rejects any deployment file over 25 MiB. The traditional Chinese OCR model was 27,120,340 bytes, so version 2 failed with `file size of 27120340 exceeds 26214400 limit`.
+Word length no longer affects display time. Regular timing is the default, and adaptive punctuation or paragraph-end pauses are an explicit opt-in setting. At 250 WPM every token targets 240 ms.
 
-The build now runs `scripts/split-dist-ocr.mjs` after Vite. It splits `dist/ocr/chi_tra.traineddata.gz` into two **13,560,170-byte** parts plus a 204-byte manifest, and removes the oversized original from `dist`. The largest deployed file is now `chi_sim.traineddata.gz` at 20,159,757 bytes.
+Live browser measurement of the deployed build, 25 intervals: average **240.3 ms**, minimum **230.2 ms**, maximum **249.1 ms**. The one-character token `a` took 241.1 ms and the thirteen-character token `distractions` took 235.1 ms, confirming no length scaling.
 
-`src/lib/ocr-model-cache.ts` joins the parts, validates the gzip header, and writes the joined gzip into the same IndexedDB `keyval-store`/`keyval` cache under `./chi_tra.traineddata` that Tesseract reads before its language request. Local development without a manifest falls back to the original `.gz`. The integrity check runs on the assembled model, not on each chunk.
+## Verification performed (30–31 October 2026)
 
-## Verification performed (30 October 2026)
-
-Windows 11, Node 24.22.1 (Codex runtime), Microsoft Edge. `pnpm` is not on this shell's PATH, so commands ran through Node directly.
+Windows 11, Node 24.22.1 (Codex runtime), Microsoft Edge. `pnpm` was not on the shell's PATH, so it ran through `corepack pnpm` with the pinned 11.25.0.
 
 | Check | Result |
 | --- | --- |
-| Unit suite | **344/344 passed** (14 Chinese, 67 core, 263 pinyin/lexicon) |
+| Unit suite | **346/346 passed** (14 Chinese, 69 core, 263 pinyin/lexicon) |
 | Strict typecheck | `tsc -b` passed |
-| Production build | Passed, 1,602 modules; `index-C3IX9uzI.js` 304.06 kB (96.91 kB gzip); OCR worker 18.14 kB |
-| Browser suite | **23/23 passed**, including 1440 px and 390 px alignment, traditional readings, correction persistence, simplified OCR and the new traditional OCR reassembly test |
-| Traditional model cache | Test asserts 27,120,340 bytes in `./chi_tra.traineddata` after OCR |
-| Strict 500 WPM | **120.0 ms/token** over 16 intervals |
-| Archive | No file over 25 MiB; `chi_tra.part1`/`part2` and manifest present |
+| Production build | Passed, 1,602 modules; `index-2cDKkYrd.js` 304.15 kB (96.95 kB gzip); OCR worker 18.14 kB |
+| Browser suite | **24/24 passed** in 44.2 s on Edge, including strict playback timing |
+| Live playback | 25 intervals at 250 WPM; average 240.3 ms, range 230.2–249.1 ms; long and short words equal |
 | Live anonymous access | HTTP **401** (private gate intact) |
-| Live authenticated access | HTTP **200** with `OAI-Sites-Authorization`; HTML references `index-C3IX9uzI.js`; manifest `application/json`; part1 `application/octet-stream` 13,560,170 bytes; bundle `text/javascript` |
-
-The traditional OCR test generates its own image under `test-results/`, selects `eng+chi_tra`, and verifies extracted text, the cache size and zero external requests. Generated PDF fixtures were restored after the suite.
+| Live authenticated access | HTTP **200**; HTML references `index-2cDKkYrd.js` and `index-jxO13Wof.css`; bundle `text/javascript`; CSS `text/css` |
+| Live OCR parts | `chi_tra.parts.json` `application/json`; part1 and part2 `application/octet-stream`, 13,560,170 bytes each |
+| Archive limit | No file over 25 MiB; max 20,159,757 bytes |
+| Deployment status | `succeeded`, production URL returned, no failure message |
 
 ## What the app is
 
-A private, local-first RSVP reader: React 19, strict TypeScript, Vite. PDF text and scanned pages, DOCX, legacy DOC, TXT, Markdown, HTML, images, multipage TIFF, and clipboard or drag-and-drop input. Extraction is reviewable and reversible; library, corrections and progress live in IndexedDB. OCR models, PDF CMaps and fonts are bundled, so documents never leave the device. See `docs/WORK_SUMMARY.md` for architecture and limitations.
+A private, local-first RSVP reader: React 19, strict TypeScript, Vite. PDF text and scanned pages, DOCX, legacy DOC, TXT, Markdown, HTML, images, multipage TIFF, and clipboard or drag-and-drop input. Extraction is reviewable and reversible; library, corrections and progress live in IndexedDB. OCR models, PDF CMaps and fonts are bundled, so documents never leave the device. Reading pace and display controls sit beside the import card so the main flow rarely needs vertical scrolling. See `docs/WORK_SUMMARY.md` for architecture and limitations.
 
 ## Known limitations
 
-- The live Site is owner-private. Interactive OCR over the public network was not run; the identical production build passed all 23 browser tests locally, and the live HTML, bundle, manifest and first model part were verified over HTTP.
-- Browser coverage is Edge on Windows, including an emulated 390 px viewport. Real iOS/Android hardware, screen readers and other engines remain unqualified.
+- Browser coverage is Edge on Windows. Real iOS/Android hardware, screen readers and other engines remain unqualified.
+- Interactive OCR over the public network was not rerun after this deployment; the identical production build passed the local browser suite, and live asset and model delivery were verified over authenticated HTTP.
 - The curated pinyin lexicon covers common readings, not every name, dialect or genuinely ambiguous sentence. `地方`/`東西` are deliberately left to the automatic engine; bare `睡著` is ambiguous.
 - Complex multi-column layouts, sidebars, rotated text, tables without reliable headers and handwriting still need review, as documented in `README.md`.
 
