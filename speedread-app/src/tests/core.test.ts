@@ -100,11 +100,29 @@ describe("tokenisation", () => {
     ["word, next", 1.15],
     ["word; next", 1.3],
     ["word. Next", 1.5],
-    ["Extraordinarilylongnumericalword next", 1.4],
-    ["Extraordinarilylongnumericalword; next", 1.4],
+    ["Extraordinarilylongnumericalword next", 1],
+    ["Extraordinarilylongnumericalword; next", 1.3],
   ])("uses one capped multiplier for %s", (text, expected) =>
     expect(tokenize([block(text)])[0].multiplier).toBe(expected),
   );
+  it("does not lengthen a word by its character count", () => {
+    const t = tokenize([block("a extraordinarilylongword next.")]);
+    expect(t[0].multiplier).toBe(1);
+    expect(t[1].multiplier).toBe(1);
+    expect(t[2].multiplier).toBe(1.7);
+  });
+  it("gives equally long display time to long and short words", () => {
+    vi.useFakeTimers({ toFake: ["performance", "setTimeout", "clearTimeout"] });
+    const e = new PlaybackEngine(
+      tokenize([block("a extraordinarilylongword next.")]),
+    );
+    e.configure(250, true);
+    expect(e.duration(0)).toBe(240);
+    expect(e.duration(1)).toBe(240);
+    expect(e.duration(2)).toBe(408);
+    e.destroy();
+    vi.useRealTimers();
+  });
   it("keeps combined source order and IDs", () => {
     const t = tokenize([
       block("Second", { id: "two" }),

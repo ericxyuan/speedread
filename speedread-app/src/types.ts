@@ -68,7 +68,7 @@ export interface Preferences {
 }
 export const defaults: Preferences = {
   wpm: 250,
-  adaptive: true,
+  adaptive: false,
   fontSize: 64,
   fontFamily: "sans-serif",
   fontWeight: 500,

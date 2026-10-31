@@ -102,14 +102,14 @@ export function tokenize(blocks: Block[], locale = "en-GB"): Token[] {
           !/(?:\b(?:Mr|Mrs|Ms|Dr|Prof|St|vs|etc|e\.g|i\.e)|\b[A-Z])\.$/.test(
             text,
           );
-        const n = Array.from(text).length;
+        // Display time is deliberately independent of word length. Only an
+        // explicit adaptive pause at punctuation or a paragraph end varies it.
         const multiplier = Math.min(
           1.7,
           Math.max(
             end ? 1.7 : 1,
             isSentence ? 1.5 : 1,
             /[;:；：]$/.test(text) ? 1.3 : /[,，、]$/.test(text) ? 1.15 : 1,
-            n > 16 ? 1.4 : n > 9 ? 1.2 : 1,
           ),
         );
         tokens.push({

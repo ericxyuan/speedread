@@ -36,7 +36,7 @@ export function Settings({
       <label className="switch-row">
         <span>
           Adaptive timing
-          <small>Extra time for punctuation and complex words</small>
+          <small>Extra time at punctuation and paragraph ends</small>
         </span>
         <input
           type="checkbox"
